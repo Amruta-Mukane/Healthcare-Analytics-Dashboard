@@ -7,7 +7,6 @@ An interactive Power BI dashboard designed to analyze child care, custody, trans
 ## Tools & Technologies
 
 - Power BI
-- DAX
 - Data Visualization
 - Data Analysis
 
