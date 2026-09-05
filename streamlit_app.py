@@ -286,6 +286,10 @@ st.divider()
 # -----------------------------------
 # DATA TABLE
 # -----------------------------------
+# -----------------------------------
+# CBP CUSTODY DETAILS
+# -----------------------------------
+
 st.subheader("CBP Custody Details")
 
 display_columns = [
@@ -299,11 +303,21 @@ display_columns = [
 
 table_data = df[display_columns].copy()
 
+# Sort by date
 table_data = table_data.sort_values("Date")
 
+# Convert date to readable text
 table_data["Date"] = table_data["Date"].dt.strftime("%Y-%m-%d")
 
-st.dataframe(
-    table_data,
-    use_container_width=True
+# Convert all values to text
+table_data = table_data.astype(str)
+
+# Display as HTML table
+st.markdown(
+    table_data.to_html(
+        index=False,
+        classes="dataframe",
+        border=0
+    ),
+    unsafe_allow_html=True
 )
