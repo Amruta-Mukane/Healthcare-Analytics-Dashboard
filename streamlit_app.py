@@ -297,21 +297,13 @@ display_columns = [
     discharged_col
 ]
 
-# Create a clean copy for the table
 table_data = df[display_columns].copy()
 
-# Convert Date to text for safe display
+table_data = table_data.sort_values("Date")
+
 table_data["Date"] = table_data["Date"].dt.strftime("%Y-%m-%d")
 
-# Make sure numeric columns are numbers
-for column in display_columns[1:]:
-    table_data[column] = pd.to_numeric(
-        table_data[column],
-        errors="coerce"
-    ).fillna(0)
-
-# Display table
 st.dataframe(
-    table_data.sort_values("Date"),
+    table_data,
     use_container_width=True
 )
