@@ -1,24 +1,30 @@
 import streamlit as st
 import pandas as pd
 
+# Page settings
 st.set_page_config(
     page_title="Healthcare Analytics Dashboard",
     layout="wide"
 )
 
 # Load dataset
-df = pd.read_excel("HHS_Cleaned_Dataset.xlsx")
+df = pd.read_excel("Healthcare_Analytics_Cleaned1.xlsx")
 
-# Convert date
+# Convert Date column
 df["Date"] = pd.to_datetime(df["Date"], dayfirst=True)
 
+# Title
 st.title("Healthcare Analytics Dashboard")
+
 st.write(
     "Interactive dashboard for healthcare care, custody, "
     "transfer and discharge analysis."
 )
 
-# KPI calculations
+# -----------------------------------
+# KPI Calculations
+# -----------------------------------
+
 total_apprehended = df[
     "Children apprehended and placed in CBP custody*"
 ].sum()
@@ -35,17 +41,38 @@ total_discharged = df[
     "Children discharged from HHS Care"
 ].sum()
 
-# KPI cards
+# -----------------------------------
+# KPI Cards
+# -----------------------------------
+
 col1, col2, col3, col4 = st.columns(4)
 
-col1.metric("Children Apprehended", f"{total_apprehended:,.0f}")
-col2.metric("Children Transferred", f"{total_transferred:,.0f}")
-col3.metric("Children in HHS Care", f"{total_hhs:,.0f}")
-col4.metric("Children Discharged", f"{total_discharged:,.0f}")
+col1.metric(
+    "Children Apprehended",
+    f"{total_apprehended:,.0f}"
+)
+
+col2.metric(
+    "Children Transferred",
+    f"{total_transferred:,.0f}"
+)
+
+col3.metric(
+    "Children in HHS Care",
+    f"{total_hhs:,.0f}"
+)
+
+col4.metric(
+    "Children Discharged",
+    f"{total_discharged:,.0f}"
+)
 
 st.divider()
 
-# Monthly data
+# -----------------------------------
+# Monthly Stage Distribution
+# -----------------------------------
+
 df["Month"] = df["Date"].dt.to_period("M").astype(str)
 
 monthly = df.groupby("Month").agg({
@@ -62,20 +89,27 @@ st.line_chart(monthly_chart)
 
 st.divider()
 
-# HHS Care trend
+# -----------------------------------
+# HHS Care by Year
+# -----------------------------------
+
 yearly_hhs = df.groupby(
     df["Date"].dt.year
 )["Children in HHS Care"].sum()
 
 st.subheader("HHS Care by Year")
+
 st.bar_chart(yearly_hhs)
 
 st.divider()
 
-# CBP custody trend
+# -----------------------------------
+# CBP Custody Trend
+# -----------------------------------
+
 st.subheader("CBP Custody Trend")
 
-custody = df.set_index("Date")[
+custody = df.sort_values("Date").set_index("Date")[
     "Children in CBP custody"
 ]
 
@@ -83,7 +117,10 @@ st.line_chart(custody)
 
 st.divider()
 
-# Data table
+# -----------------------------------
+# CBP Custody Details
+# -----------------------------------
+
 st.subheader("CBP Custody Details")
 
 st.dataframe(
@@ -96,6 +133,6 @@ st.dataframe(
             "Children in HHS Care",
             "Children discharged from HHS Care"
         ]
-    ],
+    ].sort_values("Date"),
     use_container_width=True
 )
