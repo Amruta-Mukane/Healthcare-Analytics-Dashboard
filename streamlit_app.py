@@ -15,8 +15,6 @@ st.set_page_config(
 # FIND EXCEL FILE
 # -----------------------------------
 
-BASE_DIR = Path(__file__).parent
-
 excel_files = list(BASE_DIR.glob("*.xlsx"))
 
 if not excel_files:
@@ -24,6 +22,35 @@ if not excel_files:
     st.stop()
 
 file_path = excel_files[0]
+
+# Read all sheets
+all_sheets = pd.read_excel(
+    file_path,
+    sheet_name=None
+)
+
+# Find the sheet containing the actual healthcare data
+df = None
+
+for sheet_name, sheet_data in all_sheets.items():
+    sheet_data.columns = (
+        sheet_data.columns
+        .astype(str)
+        .str.strip()
+    )
+
+    if any(
+        "date" in column.lower()
+        for column in sheet_data.columns
+    ):
+        df = sheet_data
+        break
+
+if df is None:
+    st.error("Could not find the healthcare data sheet.")
+    st.write("Sheets found:")
+    st.write(list(all_sheets.keys()))
+    st.stop()
 
 # -----------------------------------
 # LOAD DATASET
