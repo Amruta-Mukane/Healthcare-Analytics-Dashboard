@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from pathlib import Path
 
 # Page settings
 st.set_page_config(
@@ -7,11 +8,30 @@ st.set_page_config(
     layout="wide"
 )
 
-# Load dataset
-df = pd.read_excel("Healthcare_Analytics_Cleaned1.xlsx")
+# Get the folder where this Python file is located
+BASE_DIR = Path(__file__).parent
 
-# Convert Date column
-df["Date"] = pd.to_datetime(df["Date"], dayfirst=True)
+# Excel file
+file_path = BASE_DIR / "Healthcare_Analytics_Cleaned1.xlsx"
+
+# Check whether the file exists
+if not file_path.exists():
+    st.error("Excel file not found.")
+    st.write("Files available in the app folder:")
+
+    for file in BASE_DIR.iterdir():
+        st.write(file.name)
+
+    st.stop()
+
+# Load dataset
+df = pd.read_excel(file_path)
+
+# Convert Date
+df["Date"] = pd.to_datetime(
+    df["Date"],
+    dayfirst=True
+)
 
 # Title
 st.title("Healthcare Analytics Dashboard")
@@ -22,7 +42,7 @@ st.write(
 )
 
 # -----------------------------------
-# KPI Calculations
+# KPI CALCULATIONS
 # -----------------------------------
 
 total_apprehended = df[
@@ -42,7 +62,7 @@ total_discharged = df[
 ].sum()
 
 # -----------------------------------
-# KPI Cards
+# KPI CARDS
 # -----------------------------------
 
 col1, col2, col3, col4 = st.columns(4)
@@ -70,7 +90,7 @@ col4.metric(
 st.divider()
 
 # -----------------------------------
-# Monthly Stage Distribution
+# MONTHLY STAGE DISTRIBUTION
 # -----------------------------------
 
 df["Month"] = df["Date"].dt.to_period("M").astype(str)
@@ -90,7 +110,7 @@ st.line_chart(monthly_chart)
 st.divider()
 
 # -----------------------------------
-# HHS Care by Year
+# HHS CARE BY YEAR
 # -----------------------------------
 
 yearly_hhs = df.groupby(
@@ -104,21 +124,22 @@ st.bar_chart(yearly_hhs)
 st.divider()
 
 # -----------------------------------
-# CBP Custody Trend
+# CBP CUSTODY TREND
 # -----------------------------------
 
 st.subheader("CBP Custody Trend")
 
-custody = df.sort_values("Date").set_index("Date")[
-    "Children in CBP custody"
-]
+custody = (
+    df.sort_values("Date")
+    .set_index("Date")["Children in CBP custody"]
+)
 
 st.line_chart(custody)
 
 st.divider()
 
 # -----------------------------------
-# CBP Custody Details
+# DATA TABLE
 # -----------------------------------
 
 st.subheader("CBP Custody Details")
