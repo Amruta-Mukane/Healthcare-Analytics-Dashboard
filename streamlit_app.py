@@ -12,33 +12,44 @@ st.set_page_config(
 )
 
 # -----------------------------------
+# GET APP FOLDER
+# -----------------------------------
+
+BASE_DIR = Path(__file__).parent
+
+# -----------------------------------
 # FIND EXCEL FILE
 # -----------------------------------
 
 excel_files = list(BASE_DIR.glob("*.xlsx"))
 
 if not excel_files:
-    st.error("No Excel file found.")
+    st.error("No Excel file found in the app folder.")
     st.stop()
 
 file_path = excel_files[0]
 
-# Read all sheets
+# -----------------------------------
+# READ EXCEL FILE
+# -----------------------------------
+
 all_sheets = pd.read_excel(
     file_path,
     sheet_name=None
 )
 
-# Find the sheet containing the actual healthcare data
+# Find the sheet containing the actual data
 df = None
 
 for sheet_name, sheet_data in all_sheets.items():
+
     sheet_data.columns = (
         sheet_data.columns
         .astype(str)
         .str.strip()
     )
 
+    # Check for Date column
     if any(
         "date" in column.lower()
         for column in sheet_data.columns
@@ -53,43 +64,34 @@ if df is None:
     st.stop()
 
 # -----------------------------------
-# LOAD DATASET
-# -----------------------------------
-
-df = pd.read_excel(file_path)
-
-# Clean column names
-df.columns = (
-    df.columns
-    .astype(str)
-    .str.strip()
-)
-
-# -----------------------------------
 # FIND DATE COLUMN
 # -----------------------------------
 
 date_column = None
 
 for column in df.columns:
-    if column.strip().lower() == "date":
+
+    if column.lower() == "date":
         date_column = column
         break
 
 if date_column is None:
+
     for column in df.columns:
+
         if "date" in column.lower():
             date_column = column
             break
 
 if date_column is None:
     st.error("Date column was not found.")
-    st.write("Columns found in the Excel file:")
     st.write(list(df.columns))
     st.stop()
 
-# Rename detected date column
-df.rename(columns={date_column: "Date"}, inplace=True)
+df.rename(
+    columns={date_column: "Date"},
+    inplace=True
+)
 
 # Convert date
 df["Date"] = pd.to_datetime(
@@ -106,20 +108,27 @@ df = df.dropna(subset=["Date"])
 # -----------------------------------
 
 def find_column(keyword):
+
     for column in df.columns:
+
         if keyword.lower() in column.lower():
             return column
+
     return None
 
 
 apprehended_col = find_column("apprehended")
+
 transferred_col = find_column("transferred out")
+
 hhs_col = find_column("HHS Care")
+
 discharged_col = find_column("discharged")
+
 custody_col = find_column("CBP custody")
 
 # -----------------------------------
-# CHECK REQUIRED COLUMNS
+# CHECK COLUMNS
 # -----------------------------------
 
 required_columns = {
@@ -137,14 +146,19 @@ missing = [
 ]
 
 if missing:
+
     st.error("Some required columns were not found.")
-    st.write("Missing:", missing)
+
+    st.write("Missing columns:")
+    st.write(missing)
+
     st.write("Columns found in Excel:")
     st.write(list(df.columns))
+
     st.stop()
 
 # -----------------------------------
-# CONVERT NUMERIC COLUMNS
+# CONVERT NUMBERS
 # -----------------------------------
 
 for column in [
@@ -154,6 +168,7 @@ for column in [
     discharged_col,
     custody_col
 ]:
+
     df[column] = pd.to_numeric(
         df[column],
         errors="coerce"
@@ -175,8 +190,11 @@ st.write(
 # -----------------------------------
 
 total_apprehended = df[apprehended_col].sum()
+
 total_transferred = df[transferred_col].sum()
+
 total_hhs = df[hhs_col].sum()
+
 total_discharged = df[discharged_col].sum()
 
 # -----------------------------------
@@ -208,15 +226,23 @@ col4.metric(
 st.divider()
 
 # -----------------------------------
-# MONTHLY DATA
+# MONTHLY STAGE DISTRIBUTION
 # -----------------------------------
 
-df["Month"] = df["Date"].dt.to_period("M").astype(str)
+df["Month"] = (
+    df["Date"]
+    .dt.to_period("M")
+    .astype(str)
+)
 
 monthly = df.groupby("Month").agg({
+
     apprehended_col: "sum",
+
     transferred_col: "sum",
+
     discharged_col: "sum"
+
 }).reset_index()
 
 st.subheader("Monthly Stage Distribution")
@@ -248,7 +274,8 @@ st.divider()
 st.subheader("CBP Custody Trend")
 
 custody = (
-    df.sort_values("Date")
+    df
+    .sort_values("Date")
     .set_index("Date")[custody_col]
 )
 
@@ -263,15 +290,25 @@ st.divider()
 st.subheader("CBP Custody Details")
 
 display_columns = [
+
     "Date",
+
     apprehended_col,
+
     custody_col,
+
     transferred_col,
+
     hhs_col,
+
     discharged_col
+
 ]
 
 st.dataframe(
-    df[display_columns].sort_values("Date"),
+
+    df[display_columns]
+    .sort_values("Date"),
+
     use_container_width=True
 )
