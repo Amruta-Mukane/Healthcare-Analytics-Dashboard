@@ -11,9 +11,17 @@ st.set_page_config(
 # Get the folder where this Python file is located
 BASE_DIR = Path(__file__).parent
 
-# Excel file
-file_path = BASE_DIR / "Healthcare_Analytics_Cleaned1.xlsx"
+# Find Excel file automatically
+excel_files = list(BASE_DIR.glob("*.xlsx"))
 
+if not excel_files:
+    st.error("No Excel file found in the app folder.")
+    st.stop()
+
+file_path = excel_files[0]
+
+# Load dataset
+df = pd.read_excel(file_path)
 # Check whether the file exists
 if not file_path.exists():
     st.error("Excel file not found.")
