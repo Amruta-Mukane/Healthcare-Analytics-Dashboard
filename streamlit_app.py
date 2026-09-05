@@ -2,46 +2,140 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-# Page settings
+# -----------------------------------
+# PAGE SETTINGS
+# -----------------------------------
+
 st.set_page_config(
     page_title="Healthcare Analytics Dashboard",
     layout="wide"
 )
 
-# Get the folder where this Python file is located
+# -----------------------------------
+# FIND EXCEL FILE
+# -----------------------------------
+
 BASE_DIR = Path(__file__).parent
 
-# Find Excel file automatically
 excel_files = list(BASE_DIR.glob("*.xlsx"))
 
 if not excel_files:
-    st.error("No Excel file found in the app folder.")
+    st.error("No Excel file found.")
     st.stop()
 
 file_path = excel_files[0]
 
-# Load dataset
-df = pd.read_excel(file_path)
-# Check whether the file exists
-if not file_path.exists():
-    st.error("Excel file not found.")
-    st.write("Files available in the app folder:")
+# -----------------------------------
+# LOAD DATASET
+# -----------------------------------
 
-    for file in BASE_DIR.iterdir():
-        st.write(file.name)
-
-    st.stop()
-
-# Load dataset
 df = pd.read_excel(file_path)
 
-# Convert Date
-df["Date"] = pd.to_datetime(
-    df["Date"],
-    dayfirst=True
+# Clean column names
+df.columns = (
+    df.columns
+    .astype(str)
+    .str.strip()
 )
 
-# Title
+# -----------------------------------
+# FIND DATE COLUMN
+# -----------------------------------
+
+date_column = None
+
+for column in df.columns:
+    if column.strip().lower() == "date":
+        date_column = column
+        break
+
+if date_column is None:
+    for column in df.columns:
+        if "date" in column.lower():
+            date_column = column
+            break
+
+if date_column is None:
+    st.error("Date column was not found.")
+    st.write("Columns found in the Excel file:")
+    st.write(list(df.columns))
+    st.stop()
+
+# Rename detected date column
+df.rename(columns={date_column: "Date"}, inplace=True)
+
+# Convert date
+df["Date"] = pd.to_datetime(
+    df["Date"],
+    dayfirst=True,
+    errors="coerce"
+)
+
+# Remove invalid dates
+df = df.dropna(subset=["Date"])
+
+# -----------------------------------
+# FIND DATA COLUMNS
+# -----------------------------------
+
+def find_column(keyword):
+    for column in df.columns:
+        if keyword.lower() in column.lower():
+            return column
+    return None
+
+
+apprehended_col = find_column("apprehended")
+transferred_col = find_column("transferred out")
+hhs_col = find_column("HHS Care")
+discharged_col = find_column("discharged")
+custody_col = find_column("CBP custody")
+
+# -----------------------------------
+# CHECK REQUIRED COLUMNS
+# -----------------------------------
+
+required_columns = {
+    "Apprehended": apprehended_col,
+    "Transferred": transferred_col,
+    "HHS Care": hhs_col,
+    "Discharged": discharged_col,
+    "CBP Custody": custody_col
+}
+
+missing = [
+    name
+    for name, column in required_columns.items()
+    if column is None
+]
+
+if missing:
+    st.error("Some required columns were not found.")
+    st.write("Missing:", missing)
+    st.write("Columns found in Excel:")
+    st.write(list(df.columns))
+    st.stop()
+
+# -----------------------------------
+# CONVERT NUMERIC COLUMNS
+# -----------------------------------
+
+for column in [
+    apprehended_col,
+    transferred_col,
+    hhs_col,
+    discharged_col,
+    custody_col
+]:
+    df[column] = pd.to_numeric(
+        df[column],
+        errors="coerce"
+    ).fillna(0)
+
+# -----------------------------------
+# TITLE
+# -----------------------------------
+
 st.title("Healthcare Analytics Dashboard")
 
 st.write(
@@ -53,21 +147,10 @@ st.write(
 # KPI CALCULATIONS
 # -----------------------------------
 
-total_apprehended = df[
-    "Children apprehended and placed in CBP custody*"
-].sum()
-
-total_transferred = df[
-    "Children transferred out of CBP custody"
-].sum()
-
-total_hhs = df[
-    "Children in HHS Care"
-].sum()
-
-total_discharged = df[
-    "Children discharged from HHS Care"
-].sum()
+total_apprehended = df[apprehended_col].sum()
+total_transferred = df[transferred_col].sum()
+total_hhs = df[hhs_col].sum()
+total_discharged = df[discharged_col].sum()
 
 # -----------------------------------
 # KPI CARDS
@@ -98,15 +181,15 @@ col4.metric(
 st.divider()
 
 # -----------------------------------
-# MONTHLY STAGE DISTRIBUTION
+# MONTHLY DATA
 # -----------------------------------
 
 df["Month"] = df["Date"].dt.to_period("M").astype(str)
 
 monthly = df.groupby("Month").agg({
-    "Children apprehended and placed in CBP custody*": "sum",
-    "Children transferred out of CBP custody": "sum",
-    "Children discharged from HHS Care": "sum"
+    apprehended_col: "sum",
+    transferred_col: "sum",
+    discharged_col: "sum"
 }).reset_index()
 
 st.subheader("Monthly Stage Distribution")
@@ -123,7 +206,7 @@ st.divider()
 
 yearly_hhs = df.groupby(
     df["Date"].dt.year
-)["Children in HHS Care"].sum()
+)[hhs_col].sum()
 
 st.subheader("HHS Care by Year")
 
@@ -139,7 +222,7 @@ st.subheader("CBP Custody Trend")
 
 custody = (
     df.sort_values("Date")
-    .set_index("Date")["Children in CBP custody"]
+    .set_index("Date")[custody_col]
 )
 
 st.line_chart(custody)
@@ -152,16 +235,16 @@ st.divider()
 
 st.subheader("CBP Custody Details")
 
+display_columns = [
+    "Date",
+    apprehended_col,
+    custody_col,
+    transferred_col,
+    hhs_col,
+    discharged_col
+]
+
 st.dataframe(
-    df[
-        [
-            "Date",
-            "Children apprehended and placed in CBP custody*",
-            "Children in CBP custody",
-            "Children transferred out of CBP custody",
-            "Children in HHS Care",
-            "Children discharged from HHS Care"
-        ]
-    ].sort_values("Date"),
+    df[display_columns].sort_values("Date"),
     use_container_width=True
 )
